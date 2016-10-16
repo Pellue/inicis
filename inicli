@@ -9,7 +9,7 @@
  * INIpay50 library should be placed in vendor/INIpay50 as it was given.
  * Otherwise you need to set your own INIFactory::$INIPAY_ROOT.
  *
- * Usage: ./inicli.php --command=[chkfake|securepay|cancel] --mid=[given mid] --admin=[given admin id] \
+ * Usage: ./inicli.php --command=[chkfake|securepay|cancel|formauth_bill] --mid=[given mid] --admin=[given admin id] \
  *                     --params='[paramaters in JSON format]'
  */
 
@@ -30,14 +30,14 @@ $opts = getopt(
     array('mid:', 'admin:', 'params:', 'command:')
 );
 
-$commands = array('chkfake', 'securepay', 'cancel', 'authbill');
+$commands = array('chkfake', 'securepay', 'cancel', 'formauth_bill');
 if (false == in_array($opts['command'], $commands)) {
     echo "Invalid command given: {$opts['command']}\n";
     exit(1);
 }
 
 INIFactory::$INIPAY_ROOT = dirname(__FILE__) . '/vendor/INIpay50/';
-INIFactory::$INIBILL_ROOT = dirname(__FILE__) . '/vendor/INIbill41';
+INIFactory::$INIBILL_ROOT = dirname(__FILE__) . '/vendor/INIbill41Plip';
 INIFactory::$ADMIN       = $opts['admin'];
 INIFactory::$MID         = $opts['mid'];
 ob_start();
@@ -153,25 +153,21 @@ class INIFactory {
         return json_encode($result);
     }
 
-    static public function authbill($params = array()) {
+    static public function formauth_bill($params = array()) {
         $params_keys = array(
-            'buyername',
-            'goodname',
-            'price',
-            'ini_offer_period',
-
-            'print_msg',
-            'acceptmethod',
-            'encrypted',
-            'sessionkey',
-            'cardcode',
-
-            'uid',
-            'MerchantReserved3',
+            'uip',
+            'cardNumber',
+            'cardExpy',
+            'cardExpm',
+            'authfield1',
+            'authfield2',
+            'authentification',
+            'buyerName',
+            'url',
+            'merchantReserved3'            
         );
         $result_keys     = array(
             'ResultCode', 'ResultMsg', 'ResultErrorCode',
-
             'CardCode',
             'BillKey',
             'CardPass',
@@ -180,18 +176,17 @@ class INIFactory {
         );
 
         $inipay = new INIpay41;
+        $inipay->SetField('type',       'formauth_bill');
         $inipay->SetField('inipayhome', self::$INIBILL_ROOT);
+        $inipay->SetField('pgId',       'INIpayBill');
+        $inipay->SetField('keyPw',       self::$ADMIN);
+        $inipay->SetField('subPgIp',    '203.238.3.10');
+        $inipay->SetField('payMethod',   'Auth');       
+        $inipay->SetField('billtype',   'Card');
+        $inipay->SetField('debug',      self::$DEBUG);         
         $inipay->SetField('mid',        self::$MID);
-        $inipay->SetField('keyPw',      '1111'); 
 
-        $inipay->SetField('type',       'auth_bill');
-        $inipay->SetField('pgid',       'INIpayBill');
-        $inipay->SetField('subpgip',    '203.238.3.10');
-        $inipay->SetField('billtype',   'Card');        
-
-        $inipay->SetField('debug',      self::$DEBUG);
-        $inipay->SetField('admin',      self::$ADMIN);
-
+                
         foreach($params_keys as $k) {
             $inipay->SetField($k, mb_convert_encoding( $params[$k], 'EUC-KR', 'UTF-8' ));
         }
